@@ -293,6 +293,33 @@ def get_course_grades(
 
 
 @mcp.tool()
+def get_all_assignment_grades(
+    course_id: int = Field(description="The Canvas course ID")
+) -> list[dict[str, Any]]:
+    """
+    Get grades for every individual assignment in a course.
+
+    Returns each assignment with: name, points_possible, your score, grade,
+    submission status (unsubmitted/submitted/graded), due date, and whether
+    it's late or missing. Sorted graded-first, then by due date.
+
+    This is the right tool when the user asks about a SPECIFIC assignment's grade,
+    not just the overall course score. Use get_course_grades for the overall score.
+
+    Use when: User asks "What did I get on the final project?", "Show me all my
+    assignment grades", "Which assignments am I missing?", "What's my lab score?",
+    "Show me my grades breakdown"
+
+    Example queries: "What grade did I get on the final project in NLP?",
+    "Show me all graded assignments in DAT450", "Which assignments haven't I submitted?"
+    """
+    try:
+        return canvas.get_all_assignment_grades(course_id)
+    except CanvasAPIError as e:
+        return [{"error": str(e)}]
+
+
+@mcp.tool()
 def get_all_grades() -> list[dict[str, Any]]:
     """
     Get your current grades across ALL active courses at once.

@@ -443,6 +443,58 @@ class CanvasAPI:
                 return {'course_id': course_id, 'error': f'Course {course_id} not found.'}
             raise
 
+    def get_all_assignment_grades(self, course_id: int) -> List[Dict[str, Any]]:
+        """
+        Get grades for every individual assignment in a course.
+        Uses the submissions endpoint which includes score, grade, and assignment metadata.
+        """
+        try:
+            submissions = self._make_request(
+                f'/courses/{course_id}/students/submissions',
+                params={
+                    'student_ids[]': 'self',
+                    'include[]': ['assignment', 'submission_comments'],
+                    'per_page': 100,
+                }
+            )
+
+            if not submissions:
+                return [{'info': 'No submissions found for this course.'}]
+
+            formatted = []
+            for sub in submissions:
+                assignment = sub.get('assignment') or {}
+                formatted.append({
+                    'assignment_id': sub.get('assignment_id'),
+                    'assignment_name': assignment.get('name', f'Assignment {sub.get("assignment_id")}'),
+                    'points_possible': assignment.get('points_possible'),
+                    'due_at': assignment.get('due_at'),
+                    'submitted': sub.get('workflow_state') != 'unsubmitted',
+                    'submitted_at': sub.get('submitted_at'),
+                    'workflow_state': sub.get('workflow_state'),  # unsubmitted|submitted|graded
+                    'score': sub.get('score'),
+                    'grade': sub.get('grade'),
+                    'late': sub.get('late', False),
+                    'missing': sub.get('missing', False),
+                    'html_url': sub.get('preview_url'),
+                })
+
+            # Sort: graded first, then by due date
+            formatted.sort(key=lambda x: (
+                x.get('workflow_state') != 'graded',
+                x.get('due_at') or ''
+            ))
+
+            return formatted
+
+        except CanvasAPIError as e:
+            err = str(e)
+            if 'forbidden' in err.lower() or '403' in err:
+                return [{'error': 'Grades are hidden or restricted for this course.'}]
+            if 'not found' in err.lower() or '404' in err:
+                return [{'error': f'Course {course_id} not found.'}]
+            raise
+
     def get_all_grades(self) -> List[Dict[str, Any]]:
         """Get grades for all active courses at once."""
         courses = self.get_courses()
