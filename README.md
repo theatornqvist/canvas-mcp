@@ -1,136 +1,125 @@
 # Canvas LMS MCP Server
 
-A Model Context Protocol (MCP) server that integrates Canvas LMS with Claude, enabling seamless access to your Chalmers Canvas courses, assignments, deadlines, and files directly through Claude conversations.
+A Model Context Protocol (MCP) server that integrates Canvas LMS with Claude, enabling
+natural-language access to your Chalmers Canvas courses — including modules, pages,
+grades, calendar events, announcements, discussions, and assignment submissions.
 
 ## Features
 
-This MCP server provides five tools:
+13 tools covering the full range of Canvas student needs:
 
-1. **list_courses** - Get all your active courses
-2. **get_course_details** - View detailed information about a specific course
-3. **get_assignments** - List all assignments for a course
-4. **get_upcoming_deadlines** - See all upcoming deadlines across all your courses
-5. **get_course_files** - Browse files available in a course
+**Course Structure** (handles all teacher styles)
+| Tool | Description |
+|------|-------------|
+| `list_courses` | Get all active courses + their structure type |
+| `get_course_details` | Detailed info + navigation hint for this course |
+| `get_course_modules` | Week-by-week module structure with embedded items |
+| `get_course_pages` | List all wiki pages (readings, instructions, etc.) |
+| `get_course_home_page` | Main landing page content (critical for wiki-view courses) |
+| `get_course_files` | Downloadable files, with smart fallback suggestions |
+| `get_course_syllabus` | Grading policy, requirements, course objectives |
+
+**Student Features**
+| Tool | Description |
+|------|-------------|
+| `get_assignments` | All assignments for a course |
+| `get_upcoming_deadlines` | All future deadlines across all courses |
+| `get_course_grades` | Your grade/score in a specific course |
+| `get_all_grades` | Grade overview across all courses |
+| `get_assignment_submission` | Submission status + teacher feedback |
+| `get_announcements` | Recent announcements (one course or all) |
+| `get_calendar_events` | Lectures and events for a course |
+| `get_all_calendar_events` | Full schedule across all courses |
+
+**Discussions**
+| Tool | Description |
+|------|-------------|
+| `get_course_discussions` | Forum topics with reply/unread counts |
+| `get_discussion_entries` | Read actual posts and replies |
+
+---
+
+## Canvas Course Structure — How It Works
+
+Teachers structure Canvas courses differently. The `default_view` field (visible
+in `list_courses` and `get_course_details`) tells you which tools to use:
+
+| `default_view` | What it means | Best tool to start with |
+|---------------|---------------|------------------------|
+| `modules` | Week-by-week structure | `get_course_modules` |
+| `wiki` | Home page is the content hub | `get_course_home_page` |
+| `syllabus` | Syllabus-focused | `get_course_syllabus` |
+| `assignments` | Assignment-centric | `get_assignments` |
+
+`get_course_details` always returns a `navigation_hint` that tells Claude exactly
+which tool to call next for that course.
+
+---
 
 ## Prerequisites
 
 - Python 3.10 or higher
-- A Chalmers Canvas account with access to canvas.chalmers.se
-- Claude Desktop (for integration with Claude)
+- A Chalmers Canvas account at [canvas.chalmers.se](https://canvas.chalmers.se)
+- Claude Desktop (for integration)
+
+---
 
 ## Getting Your Canvas Access Token
 
-Before you can use this MCP server, you need to generate a Canvas API access token:
-
-1. Navigate to [canvas.chalmers.se](https://canvas.chalmers.se)
-2. Log in with your Chalmers credentials
-3. Click on **Account** (left sidebar) → **Settings**
-4. Scroll down to the **Approved Integrations** section
-5. Click **+ New Access Token**
-6. Fill in the form:
-   - **Purpose**: "Claude MCP Integration" (or any descriptive name)
-   - **Expires**: (Optional) Set an expiration date for security
+1. Go to [canvas.chalmers.se](https://canvas.chalmers.se) and log in
+2. Click **Account** (left sidebar) → **Settings**
+3. Scroll to **Approved Integrations**
+4. Click **+ New Access Token**
+5. Set **Purpose**: "Claude MCP Integration"
+6. Optionally set an expiry date for security
 7. Click **Generate Token**
-8. **IMPORTANT**: Copy the token immediately - it will only be shown once!
+8. **Copy the token immediately** — it's only shown once
+
+---
 
 ## Installation
 
-### 1. Clone or Download This Project
-
 ```bash
-cd /path/to/your/projects
-# If you haven't already created the directory
-git clone <your-repo> canvas-mcp
-# Or just ensure you're in the canvas-mcp directory
-cd canvas-mcp
-```
+# 1. Navigate to the project directory
+cd /Users/theatornqvist/canvas-mcp
 
-### 2. Create a Virtual Environment
-
-```bash
+# 2. Create and activate virtual environment
 python3 -m venv .venv
-```
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-### 3. Activate the Virtual Environment
-
-**On macOS/Linux:**
-```bash
-source .venv/bin/activate
-```
-
-**On Windows:**
-```cmd
-.venv\Scripts\activate
-```
-
-### 4. Install Dependencies
-
-```bash
+# 3. Install dependencies
 pip install -r requirements.txt
-```
 
-### 5. Configure Environment Variables
-
-```bash
-# Copy the example environment file
+# 4. Configure environment
 cp .env.example .env
-
-# Edit .env with your favorite editor
-nano .env  # or: vim .env, code .env, etc.
+# Edit .env and set CANVAS_TOKEN=your_actual_token_here
 ```
 
-Add your Canvas token to the `.env` file:
+---
 
-```env
-CANVAS_TOKEN=your_actual_token_here
-CANVAS_BASE_URL=https://canvas.chalmers.se/api/v1
-```
-
-**Security Note**: Never commit your `.env` file to version control! It's already listed in `.gitignore`.
-
-## Testing the Server Standalone
-
-Before integrating with Claude Desktop, test that the server works:
+## Testing the Server
 
 ```bash
+# Quick startup check (Ctrl+C to stop)
 python server.py
+
+# No output = working correctly. Errors appear on stderr.
 ```
 
-The server should start without errors. You'll see it running in stdio mode (it won't print anything unless there's an error during startup).
-
-Press `Ctrl+C` to stop the server.
+---
 
 ## Claude Desktop Integration
 
-To use this MCP server with Claude Desktop, you need to add it to your Claude Desktop configuration.
+Edit your Claude Desktop config:
 
-### 1. Locate Your Claude Desktop Config File
-
-**On macOS:**
-```
-~/Library/Application Support/Claude/claude_desktop_config.json
-```
-
-**On Windows:**
-```
-%APPDATA%\Claude\claude_desktop_config.json
-```
-
-**On Linux:**
-```
-~/.config/Claude/claude_desktop_config.json
-```
-
-### 2. Edit the Configuration File
-
-Open the config file in a text editor. If the file doesn't exist, create it with this content:
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "canvas-lms": {
-      "command": "python",
-      "args": ["/absolute/path/to/canvas-mcp/server.py"],
+      "command": "/Users/theatornqvist/canvas-mcp/.venv/bin/python",
+      "args": ["/Users/theatornqvist/canvas-mcp/server.py"],
       "env": {
         "CANVAS_TOKEN": "your_canvas_token_here",
         "CANVAS_BASE_URL": "https://canvas.chalmers.se/api/v1"
@@ -140,241 +129,282 @@ Open the config file in a text editor. If the file doesn't exist, create it with
 }
 ```
 
-**Important**:
-- Replace `/absolute/path/to/canvas-mcp/server.py` with the actual absolute path to your server.py file
-- Replace `your_canvas_token_here` with your actual Canvas token
-- You can also use the virtual environment's Python: `/absolute/path/to/canvas-mcp/.venv/bin/python`
+Restart Claude Desktop completely after saving.
 
-**Example (macOS):**
-```json
-{
-  "mcpServers": {
-    "canvas-lms": {
-      "command": "/Users/theatornqvist/canvas-mcp/.venv/bin/python",
-      "args": ["/Users/theatornqvist/canvas-mcp/server.py"],
-      "env": {
-        "CANVAS_TOKEN": "1234~abcdefghijklmnopqrstuvwxyz",
-        "CANVAS_BASE_URL": "https://canvas.chalmers.se/api/v1"
-      }
-    }
-  }
-}
-```
-
-### 3. Restart Claude Desktop
-
-Completely quit and restart Claude Desktop for the changes to take effect.
-
-### 4. Verify the Integration
-
-Open Claude Desktop and check:
-- Look for the MCP server indicator (usually a small icon or indicator showing connected servers)
-- The "canvas-lms" server should be listed as connected
+---
 
 ## Usage Examples
 
-Once integrated with Claude Desktop, you can ask Claude questions like:
+### Navigating Different Course Structures
 
-### View Your Courses
 ```
-"Show me all my active courses"
 "What courses am I enrolled in?"
+→ list_courses — see default_view for each course
+
+"Tell me about my NLP course"
+→ get_course_details — returns navigation_hint: "use get_course_modules"
+
+"Show week 3 content from the NLP course"
+→ get_course_modules — shows weekly structure with all embedded items
+
+"What's on the Applied ML home page?"
+→ get_course_home_page — critical for wiki-view courses
+
+"List all pages in my Machine Learning course"
+→ get_course_pages — shows all wiki pages
+
+"What files are available in DAT450?"
+→ get_course_files — with smart suggestions if empty
 ```
 
-### Check Assignments
+### Grades & Performance
+
 ```
-"What assignments do I have in course 12345?"
-"Show me the assignments for my Machine Learning course"
+"How am I doing in all my courses?"
+→ get_all_grades
+
+"What's my grade in the NLP course?"
+→ get_course_grades(course_id)
+
+"Did I submit the last homework?"
+→ get_assignment_submission(course_id, assignment_id)
+
+"What feedback did I get on lab 2?"
+→ get_assignment_submission — includes teacher comments
 ```
 
-### See Upcoming Deadlines
+### Deadlines & Calendar
+
 ```
-"What assignments are due soon?"
-"Show me all my upcoming deadlines"
-"What do I need to work on this week?"
+"What's due this week?"
+→ get_upcoming_deadlines
+
+"What do I have today?"
+→ get_all_calendar_events(days_ahead=1)
+
+"What's my schedule this week?"
+→ get_all_calendar_events(days_ahead=7)
+
+"When is the next lecture for DAT315?"
+→ get_calendar_events(course_id)
 ```
 
-### Get Course Details
+### Announcements
+
 ```
-"Tell me more about course 67890"
-"What's the syllabus for my Algorithms course?"
+"Any new announcements?"
+→ get_announcements (all courses, last 14 days)
+
+"Did the NLP teacher post anything?"
+→ get_announcements(course_id=NLP_COURSE_ID)
+
+"Show me announcements from the last month"
+→ get_announcements(days_back=30)
 ```
 
-### Browse Course Files
+### Discussions
+
 ```
-"What files are available in course 12345?"
-"Show me the lecture slides for my Data Structures course"
+"What's being discussed in the forum?"
+→ get_course_discussions(course_id)
+
+"Read the week 3 discussion"
+→ get_discussion_entries(course_id, topic_id)
+
+"Summarize what people are saying about the midterm"
+→ get_discussion_entries(course_id, topic_id)
 ```
+
+---
+
+## Common Patterns
+
+### Pattern 1: Unknown Course Structure
+
+```
+You: "Show me the content for my Applied ML course"
+
+Claude:
+1. list_courses → finds Applied ML, default_view = "wiki"
+2. get_course_home_page → gets the rich home page content
+   OR if empty: get_course_pages → lists all wiki pages
+```
+
+### Pattern 2: Finding Specific Materials
+
+```
+You: "Find the lecture slides for week 3 in NLP"
+
+Claude:
+1. list_courses → finds NLP course ID
+2. get_course_modules → finds "Week 3" module
+3. Looks for File/Page items in that module
+```
+
+### Pattern 3: Checking Grades + Feedback
+
+```
+You: "How did I do on the last assignment in DAT450?"
+
+Claude:
+1. get_assignments(course_id) → finds the latest assignment + its ID
+2. get_assignment_submission(course_id, assignment_id) → grade + comments
+```
+
+### Pattern 4: Daily Planning
+
+```
+You: "What do I have going on today and this week?"
+
+Claude:
+1. get_all_calendar_events(days_ahead=7) → schedule
+2. get_upcoming_deadlines → nearest assignment deadlines
+3. get_announcements → any recent teacher posts
+```
+
+---
+
+## Tool Reference
+
+### list_courses
+```json
+[{
+  "id": 12345,
+  "name": "Natural Language Processing",
+  "course_code": "DAT450",
+  "enrollment_term": "HT 2024",
+  "default_view": "modules",
+  "total_students": 85
+}]
+```
+
+### get_course_modules
+```json
+{
+  "modules": [{
+    "id": 111,
+    "name": "Week 3: Sequence Models",
+    "position": 3,
+    "items_count": 5,
+    "items": [
+      {"type": "File", "title": "Lecture 3 Slides", "html_url": "..."},
+      {"type": "Assignment", "title": "Lab 1", "html_url": "..."},
+      {"type": "ExternalUrl", "title": "Paper reading", "external_url": "..."}
+    ]
+  }],
+  "count": 8
+}
+```
+
+### get_all_grades
+```json
+[{
+  "course_id": 12345,
+  "course_name": "Natural Language Processing",
+  "course_code": "DAT450",
+  "current_score": 87.5,
+  "current_grade": "B+",
+  "final_score": 85.0,
+  "final_grade": "B"
+}]
+```
+
+### get_assignment_submission
+```json
+{
+  "assignment_name": "Lab 2: Sequence Labelling",
+  "submitted": true,
+  "submitted_at": "2024-10-15T22:30:00Z",
+  "workflow_state": "graded",
+  "score": 95.0,
+  "grade": "A",
+  "late": false,
+  "submission_comments": [
+    {"comment": "Great work on the CRF section!", "author_name": "Dr. Smith"}
+  ]
+}
+```
+
+### get_all_calendar_events
+```json
+[{
+  "title": "Lecture 5: Transformers",
+  "course_name": "Natural Language Processing",
+  "start_at": "2024-10-17T10:00:00Z",
+  "end_at": "2024-10-17T12:00:00Z",
+  "location_name": "Room HC4"
+}]
+```
+
+---
 
 ## Project Structure
 
 ```
 canvas-mcp/
-├── server.py          # Main MCP server with tool definitions
-├── canvas_api.py      # Canvas API wrapper with error handling
-├── requirements.txt   # Python dependencies
-├── .env.example      # Environment variable template
-├── .env              # Your actual environment variables (not in git)
-├── .gitignore        # Git ignore rules
-└── README.md         # This file
+├── server.py        # MCP server with all 13 tool definitions
+├── canvas_api.py    # Canvas API wrapper (all HTTP calls + error handling)
+├── requirements.txt # Dependencies
+├── .env.example     # Environment variable template
+├── .env             # Your actual token (NOT in git)
+├── .gitignore       # Protects .env and caches
+└── README.md        # This file
 ```
 
-## Tools Reference
-
-### list_courses()
-Returns all active courses you're enrolled in.
-
-**Returns:**
-```json
-[
-  {
-    "id": 12345,
-    "name": "Introduction to Machine Learning",
-    "course_code": "TDA231",
-    "enrollment_term": "HT 2024",
-    "total_students": 150,
-    "workflow_state": "available"
-  }
-]
-```
-
-### get_course_details(course_id)
-Get detailed information about a specific course.
-
-**Parameters:**
-- `course_id` (int): The Canvas course ID
-
-**Returns:** Full course object with syllabus, teachers, dates, etc.
-
-### get_assignments(course_id)
-List all assignments for a course.
-
-**Parameters:**
-- `course_id` (int): The Canvas course ID
-
-**Returns:**
-```json
-[
-  {
-    "id": 67890,
-    "name": "Assignment 1: Linear Regression",
-    "due_at": "2024-09-15T23:59:00Z",
-    "points_possible": 100,
-    "submission_types": ["online_upload"],
-    "html_url": "https://canvas.chalmers.se/courses/12345/assignments/67890"
-  }
-]
-```
-
-### get_upcoming_deadlines()
-Get all upcoming assignment deadlines across all your courses, sorted by due date.
-
-**Returns:**
-```json
-[
-  {
-    "course_id": 12345,
-    "course_name": "Introduction to Machine Learning",
-    "course_code": "TDA231",
-    "assignment_id": 67890,
-    "assignment_name": "Assignment 1: Linear Regression",
-    "due_at": "2024-09-15T23:59:00Z",
-    "points_possible": 100,
-    "html_url": "https://canvas.chalmers.se/courses/12345/assignments/67890"
-  }
-]
-```
-
-### get_course_files(course_id)
-List all files in a course.
-
-**Parameters:**
-- `course_id` (int): The Canvas course ID
-
-**Returns:**
-```json
-[
-  {
-    "id": 111222,
-    "display_name": "Lecture 1 - Introduction.pdf",
-    "filename": "lecture1_intro.pdf",
-    "url": "https://canvas.chalmers.se/files/111222/download",
-    "size": 1048576,
-    "content_type": "application/pdf",
-    "created_at": "2024-08-20T10:00:00Z"
-  }
-]
-```
+---
 
 ## Error Handling
 
-The server handles common errors gracefully:
+All tools handle errors gracefully and return descriptive messages:
 
-- **401 Unauthorized**: Invalid or expired Canvas token
-- **403 Forbidden**: No permission to access the resource
-- **404 Not Found**: Invalid course ID or endpoint
-- **429 Rate Limit**: Too many requests (Canvas limits apply)
-- **Network Errors**: Connection timeouts or failures
+| HTTP Code | Meaning | Response |
+|-----------|---------|----------|
+| 401 | Bad token | "Authentication failed. Check CANVAS_TOKEN." |
+| 403 | Tab disabled | "Files tab is disabled. Try get_course_modules." |
+| 404 | No such resource | "No home page set. Try get_course_modules." |
+| 429 | Rate limited | "Rate limit exceeded. Wait a moment." |
+| Empty | No data | "No modules found. Try get_course_home_page." |
 
-Errors are returned in the response with descriptive messages.
+Empty results always include a `suggestions` field with alternative tools to try.
 
-## Security Considerations
+---
 
-- **Never commit your `.env` file** - it contains your sensitive Canvas token
-- **Token permissions** - Your token has the same permissions as your Canvas account
-- **Rate limits** - Canvas API typically allows ~3000 requests per hour
-- **Token expiration** - Set expiration dates on tokens for better security
-- **Local only** - This MCP server runs locally on your machine and doesn't send data elsewhere
+## Security
+
+- Token lives in `.env` (local only, excluded from git)
+- Token also in Claude Desktop config (local only, not sent anywhere)
+- No logging of tokens anywhere in the codebase
+- Canvas rate limit: ~3000 requests/hour — normal usage is well under this
+
+---
 
 ## Troubleshooting
 
-### Server doesn't start
-- Check that all dependencies are installed: `pip install -r requirements.txt`
-- Verify your `.env` file exists and contains valid values
-- Ensure your virtual environment is activated
+**Server doesn't start**
+```bash
+# Verify dependencies are installed
+.venv/bin/pip list | grep mcp
 
-### "Authentication failed" error
-- Verify your Canvas token is correct in the `.env` file (or Claude Desktop config)
-- Check if the token has expired (generate a new one if needed)
-- Ensure there are no extra spaces or quotes around the token
+# Check .env exists and has your token
+cat .env
+```
 
-### Claude Desktop doesn't show the server
-- Verify the absolute path in `claude_desktop_config.json` is correct
-- Check that the Python path is valid (use full path to `.venv/bin/python`)
-- Restart Claude Desktop completely (quit and reopen)
-- Check Claude Desktop logs for error messages
+**"Authentication failed"** — Check that your CANVAS_TOKEN is correct and hasn't expired.
+Generate a new one from Canvas Settings if needed.
 
-### "Resource not found" errors
-- Verify the course ID is correct (use `list_courses` to get valid IDs)
-- Ensure you have access to the course in Canvas
-- Check that the course is in "active" state
+**Claude Desktop doesn't show Canvas tools** — Verify the absolute Python path in the config
+matches `.venv/bin/python` and restart Claude Desktop completely.
 
-## Canvas API Documentation
+**All courses return empty modules** — Use `list_courses` first to check `default_view`
+for each course, then call the appropriate tool for that view type.
 
-For more information about Canvas API endpoints:
-- [Canvas API Documentation](https://canvas.instructure.com/doc/api/)
-- [Canvas REST API Reference](https://canvas.instructure.com/doc/api/all_resources.html)
+---
 
 ## Future Enhancements
 
-Possible features for future versions:
 - Submit assignments
-- Post to discussion boards
-- Download course files
-- Get announcement notifications
-- Calendar integration
-- Caching for better performance
-- Support for pagination (>100 files per course)
-
-## Contributing
-
-This is a personal project for Chalmers Canvas integration. Feel free to fork and adapt for your own institution's Canvas instance!
-
-## License
-
-MIT License - feel free to use and modify as needed.
-
-## Support
-
-For Canvas-related issues, contact Chalmers IT support.
-For MCP server issues, check the implementation or create an issue in the repository.
+- Post discussion replies
+- Download file content
+- Pagination for large courses (>100 files/modules)
+- Caching layer for repeated queries
+- Notifications / push-style announcements
